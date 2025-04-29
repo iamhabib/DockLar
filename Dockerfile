@@ -5,7 +5,13 @@ ARG ENABLE_MONGODB_EXTENSION_VERSION=2.0.0
 
 FROM php:${PHP_VERSION}-fpm
 
+# Redeclare ARGs and export as ENV for access in RUN blocks
 ARG user
+ARG ENABLE_MONGODB_EXTENSION
+ARG ENABLE_MONGODB_EXTENSION_VERSION
+
+ENV ENABLE_MONGODB_EXTENSION=${ENABLE_MONGODB_EXTENSION}
+ENV ENABLE_MONGODB_EXTENSION_VERSION=${ENABLE_MONGODB_EXTENSION_VERSION}
 
 # Install necessary packages and dependencies for the project
 RUN apt-get update
@@ -49,7 +55,7 @@ RUN docker-php-ext-install calendar
 # Install the PHP Redis extension via PECL
 RUN pecl install redis && docker-php-ext-enable redis
 
-# Install MongoDB extension if enabled
+# Conditionally install MongoDB extension
 RUN if [ "$ENABLE_MONGODB_EXTENSION" = "true" ] && [ -n "$ENABLE_MONGODB_EXTENSION_VERSION" ]; then \
     pecl install mongodb-${ENABLE_MONGODB_EXTENSION_VERSION} && docker-php-ext-enable mongodb; \
 fi
