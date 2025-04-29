@@ -25,7 +25,7 @@ function install_certbot() {
         if ! sudo ln -sf /snap/bin/certbot /usr/bin/certbot; then  # Use -sf to force symlink
             display "error" "Failed to create certbot symlink"
             return 1
-        }
+        fi
 
         display "success" "Certbot has been installed successfully."
     else
@@ -38,19 +38,19 @@ function install_ssl_certificate() {
     if [ -z "${HOST_URL}" ]; then
         display "error" "HOST_URL is not set in environment"
         return 1
-    }
+    fi
 
     # Install certbot if not present
     if ! install_certbot; then
         display "error" "Failed to install certbot"
         return 1
-    }
+    fi
 
     # Attempt to install SSL certificate
     if ! sudo certbot --nginx -d "${HOST_URL}"; then
         display "error" "Failed to install SSL certificate for ${HOST_URL}"
         return 1
-    }
+    fi
 
     display "success" "SSL certificate installed successfully for ${HOST_URL}"
 }
