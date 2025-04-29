@@ -6,8 +6,9 @@ services:
       dockerfile: ./Dockerfile
       args:
         user: ${ENV}_${APP_NAME}_user
-        PHP_VERSION: ${PHP_VERSION}
+        PHP_VERSION: ${PHP_VERSION:-8.3}
         ENABLE_MONGODB_EXTENSION: ${ENABLE_MONGODB_EXTENSION:-false}
+        ENABLE_MONGODB_EXTENSION_VERSION: ${ENABLE_MONGODB_EXTENSION_VERSION:-1.20.0}
     container_name: ${ENV}_${APP_NAME}_job
     restart: unless-stopped
     working_dir: /var/www
