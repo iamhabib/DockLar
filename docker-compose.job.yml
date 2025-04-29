@@ -1,0 +1,29 @@
+
+services:
+  job:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+      args:
+        user: ${ENV}_${APP_NAME}_user
+        PHP_VERSION: ${PHP_VERSION}
+        ENABLE_MONGODB_EXTENSION: ${ENABLE_MONGODB_EXTENSION:-false}
+    container_name: ${ENV}_${APP_NAME}_job
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ../:/var/www:delegated
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini:ro
+    environment:
+      PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
+      PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-30M}
+      PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-30M}
+      PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-60}
+    networks:
+      mynet: {}
+    command: php /var/www/artisan queue:work --sleep=5 --tries=2 --timeout=300
+
+networks:
+  mynet:
+    driver: bridge
+    name: ${ENV}_${APP_NAME}_network
