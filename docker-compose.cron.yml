@@ -15,6 +15,7 @@ services:
     volumes:
       - ../:/var/www:delegated
       - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini:ro
+      - ./php/www-custom.conf:/usr/local/etc/php-fpm.d/www-custom.conf:ro
     environment:
       PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
       PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-30M}
