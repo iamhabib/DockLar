@@ -75,6 +75,14 @@ function install_docker_n_compose() {
 }
 
 function docker_compose_up() {
+    # Check if the port is already in use
+    if (echo >/dev/tcp/localhost/${CONTAINER_PORT}) >/dev/null 2>&1; then
+        echo "❌ Port ${CONTAINER_PORT} is already in use. Please choose a different port or stop the service using this port."
+        exit 1
+    else
+        echo "✅ Port ${CONTAINER_PORT} is available."
+    fi
+    
     # Build and start the containers
     local compose_file="-f docker-compose.yml"
     if [ "${ENABLE_CRON}" = "true" ]; then
