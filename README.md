@@ -1,4 +1,4 @@
-# Docker-based Laravel Environment for Production/Staging
+# Docker-based Laravel Environment for Production/Staging/Development
 
 A streamlined Docker setup for Laravel applications with Nginx, PHP-FPM, and additional services. This setup includes automated scripts for easy deployment and management.
 
@@ -24,15 +24,22 @@ A streamlined Docker setup for Laravel applications with Nginx, PHP-FPM, and add
 - Git
 - Basic command line knowledge
 
-### Installation
+### How to Use
 
-1. **Clone your Laravel project**
+1. **Create your Laravel project**
    ```bash
-   git clone <your-project-url>
-   cd <project-directory>
+   # Create or clone your Laravel project
+   git clone <your-laravel-project-url>
+   cd <your-laravel-project>
    ```
 
-2. **Set up environment file**
+2. **Clone this repository into your Laravel project**
+   ```bash
+   git clone <this-repo-url> docker
+   cd docker
+   ```
+
+3. **Set up environment file**
    ```bash
    cp .env.example .env
    ```
@@ -60,29 +67,27 @@ A streamlined Docker setup for Laravel applications with Nginx, PHP-FPM, and add
    ENABLE_MONGODB_EXTENSION_VERSION=1.20.0
    ```
 
-3. **Run the magic script**
+4. **Run the magic script**
    ```bash
-   cd docker
    chmod +x magic.sh
    ./magic.sh
    ```
 
-## 🎯 Available Commands
+## 🎯 Available Options
 
 The `magic.sh` script provides these options:
 
-```bash
-1. Install Docker and Docker Compose
-2. Docker Compose Up
-3. Docker Compose Down
-4. Docker PS
-5. Goto Bash
-6. Delete All Unused Docker Images
-7. Set Swap Memory
-8. Create NGINX Server Block
-9. Delete NGINX Server Block
-10. Install Lets Encrypt SSL Certificate
-```
+1. **Install Docker** - Install Docker if not already installed on your host machine
+2. **Install Docker Compose** - Install Docker Compose if not already installed
+3. **Docker Compose Up** - Build and start all containers
+4. **Docker Compose Down** - Stop and remove all containers
+5. **Docker PS** - View running containers
+6. **Goto Bash** - Access the PHP container's shell
+7. **Delete All Unused Docker Images** - Clean up unused Docker resources
+8. **Set Swap Memory** - Configure swap memory on the host
+9. **Create NGINX Server Block** - Set up Nginx configuration
+10. **Delete NGINX Server Block** - Remove Nginx configuration
+11. **Install Lets Encrypt SSL Certificate** - Set up SSL for your domain
 
 ## 🛠 Development Workflow
 
@@ -91,26 +96,25 @@ The `magic.sh` script provides these options:
 1. **Start all services**
    ```bash
    ./magic.sh
-   # Select option 2: "Docker Compose Up"
+   # Select option 3: "Docker Compose Up"
    ```
 
 2. **Access your application**
    - Local development: `http://localhost:8000`
    - With domain: `http://your-domain.com`
 
-
 ### Container Management
 
 Access container shell:
 ```bash
 ./magic.sh
-# Select option 5: "Goto Bash"
+# Select option 6: "Goto Bash"
 ```
 
 View running containers:
 ```bash
 ./magic.sh
-# Select option 4: "Docker PS"
+# Select option 5: "Docker PS"
 ```
 
 ## 📁 Project Structure
@@ -121,16 +125,16 @@ docker/
 ├── docker-compose.yml      # Main docker-compose configuration
 ├── docker-compose.job.yml  # Queue worker configuration
 ├── docker-compose.cron.yml # Cron jobs configuration
-├── magic.sh               # Main automation script
+├── magic.sh                # Main automation script
 ├── bash/
-│   ├── utility.sh         # Common utility functions
-│   ├── docker.sh          # Docker-related functions
-│   ├── nginx.sh           # Nginx configuration functions
-│   └── certbot.sh         # SSL certificate functions
+│   ├── utility.sh          # Common utility functions
+│   ├── docker.sh           # Docker-related functions
+│   ├── nginx.sh            # Nginx configuration functions
+│   └── certbot.sh          # SSL certificate functions
 ├── nginx/
-│   └── reverse_proxy.conf # Nginx reverse proxy configuration
+│   └── reverse_proxy.conf  # Nginx reverse proxy configuration
 └── php/
-    └── local.ini          # PHP configuration
+    └── local.ini           # PHP configuration
 ```
 
 ## 🔧 Configuration

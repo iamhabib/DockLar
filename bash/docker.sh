@@ -1,26 +1,8 @@
 #!/bin/bash
 
-function install_docker_n_compose() {
+function install_docker() {
     set -e  # Exit on any error
     set -x  # Enable debug mode
-
-    # Install dependencies
-    if ! sudo apt install -y apt-transport-https ca-certificates curl software-properties-common; then
-        display "error" "Failed to install dependencies"
-        exit 1
-    fi
-
-    # Add Docker GPG key
-    if ! curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -; then
-        display "error" "Failed to add Docker GPG key"
-        exit 1
-    fi
-
-    # Add Docker repository
-    if ! sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"; then
-        display "error" "Failed to add Docker repository"
-        exit 1
-    fi
 
     # Update package list
     if ! sudo apt update; then
@@ -29,7 +11,7 @@ function install_docker_n_compose() {
     fi
 
     # Install Docker
-    if ! sudo apt install -y docker-ce; then
+    if ! sudo apt install docker.io -y; then
         display "error" "Failed to install Docker"
         exit 1
     fi
@@ -40,26 +22,37 @@ function install_docker_n_compose() {
         exit 1
     fi
 
-    # Add the current user to the docker group (optional)
+    # Add the current user to the docker group
     if ! sudo usermod -aG docker $USER; then
         display "error" "Failed to add user to Docker group"
         exit 1
     fi
 
-    # Install Docker Compose (optional)
-    if ! sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose; then
+    newgrp docker;
+
+    # Test Docker installation
+    if ! docker --version; then
+        display "error" "Docker installation failed"
+        exit 1
+    fi
+
+    set +x  # Disable debug mode
+
+    display "success" "Docker Installation Done"
+}
+
+function install_docker_compose() {
+    set -e  # Exit on any error
+    set -x  # Enable debug mode
+
+    # Install Docker Compose
+    if ! sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d'"' -f4)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose; then
         display "error" "Failed to download Docker Compose"
         exit 1
     fi
 
     if ! sudo chmod +x /usr/local/bin/docker-compose; then
         display "error" "Failed to set executable permissions for Docker Compose"
-        exit 1
-    fi
-
-    # Test Docker installation
-    if ! docker --version; then
-        display "error" "Docker installation failed"
         exit 1
     fi
 
@@ -71,7 +64,7 @@ function install_docker_n_compose() {
 
     set +x  # Disable debug mode
 
-    display "success" "Docker Installation Done"
+    display "success" "Docker Compose Installation Done"
 }
 
 function docker_compose_up() {
