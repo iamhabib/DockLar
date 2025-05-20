@@ -2,6 +2,7 @@ ARG PHP_VERSION=8.1
 ARG user=appuser
 ARG ENABLE_MONGODB_EXTENSION=false
 ARG ENABLE_MONGODB_EXTENSION_VERSION=2.0.0
+ARG ENABLE_SQLITE_EXTENSION=false
 
 FROM php:${PHP_VERSION}-fpm
 
@@ -12,6 +13,8 @@ ARG ENABLE_MONGODB_EXTENSION_VERSION
 
 ENV ENABLE_MONGODB_EXTENSION=${ENABLE_MONGODB_EXTENSION}
 ENV ENABLE_MONGODB_EXTENSION_VERSION=${ENABLE_MONGODB_EXTENSION_VERSION}
+
+ENV ENABLE_SQLITE_EXTENSION=${ENABLE_SQLITE_EXTENSION}
 
 # Install necessary packages and dependencies for the project
 RUN apt-get update
@@ -37,6 +40,8 @@ RUN apt-get install libssl-dev -y
 RUN apt-get install pkg-config -y
  # Add this line for the intl extension support
 RUN apt-get install libicu-dev -y
+# Install SQLite system dependency
+RUN apt-get install -y libsqlite3-dev
 
 # Clear cache(optional)
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -58,6 +63,11 @@ RUN pecl install redis && docker-php-ext-enable redis
 # Conditionally install MongoDB extension
 RUN if [ "$ENABLE_MONGODB_EXTENSION" = "true" ] && [ -n "$ENABLE_MONGODB_EXTENSION_VERSION" ]; then \
     pecl install mongodb-${ENABLE_MONGODB_EXTENSION_VERSION} && docker-php-ext-enable mongodb; \
+fi
+
+# Conditionally install SQLite3 extension
+RUN if [ "$ENABLE_SQLITE_EXTENSION" = "true" ]; then \
+    docker-php-ext-install pdo_sqlite sqlite3; \
 fi
 
 # install composer
