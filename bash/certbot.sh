@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Source nginx configuration and utilities
-source nginx.sh
+source ./bash/nginx.sh
 source ./bash/utility.sh  # Add this to access display function and env variables
 
 # Ensure nginx is installed before proceeding
