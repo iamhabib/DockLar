@@ -3,6 +3,8 @@ ARG user=appuser
 ARG ENABLE_MONGODB_EXTENSION=false
 ARG ENABLE_MONGODB_EXTENSION_VERSION=1.20.0
 ARG ENABLE_SQLITE_EXTENSION=false
+ARG NPM=false
+ARG NODE_VERSION=20
 
 FROM php:${PHP_VERSION}-fpm
 
@@ -11,10 +13,14 @@ ARG user
 ARG ENABLE_MONGODB_EXTENSION
 ARG ENABLE_MONGODB_EXTENSION_VERSION
 ARG ENABLE_SQLITE_EXTENSION
+ARG NPM
+ARG NODE_VERSION
 
 ENV ENABLE_MONGODB_EXTENSION=${ENABLE_MONGODB_EXTENSION}
 ENV ENABLE_MONGODB_EXTENSION_VERSION=${ENABLE_MONGODB_EXTENSION_VERSION}
 ENV ENABLE_SQLITE_EXTENSION=${ENABLE_SQLITE_EXTENSION}
+ENV NPM=${NPM}
+ENV NODE_VERSION=${NODE_VERSION}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -42,6 +48,20 @@ fi
 
 RUN if [ "$ENABLE_SQLITE_EXTENSION" = "true" ]; then \
     docker-php-ext-install pdo_sqlite sqlite3; \
+fi
+
+# Optional Node.js + npm (Vite / React / Vue frontend builds)
+# NODE_VERSION = major only (18, 20, 22) → NodeSource setup_${NODE_VERSION}.x
+RUN if [ "$NPM" = "true" ]; then \
+    if ! echo "$NODE_VERSION" | grep -Eq '^[0-9]+$'; then \
+      echo "NODE_VERSION must be a major number (e.g. 18, 20, 22), got: ${NODE_VERSION}" >&2; \
+      exit 1; \
+    fi; \
+    apt-get update && apt-get install -y --no-install-recommends ca-certificates gnupg \
+    && curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && node --version && npm --version; \
 fi
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

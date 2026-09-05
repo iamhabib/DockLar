@@ -10,6 +10,8 @@ services:
         ENABLE_MONGODB_EXTENSION: ${ENABLE_MONGODB_EXTENSION:-false}
         ENABLE_MONGODB_EXTENSION_VERSION: ${ENABLE_MONGODB_EXTENSION_VERSION:-1.20.0}
         ENABLE_SQLITE_EXTENSION: ${ENABLE_SQLITE_EXTENSION:-false}
+        NPM: ${NPM:-false}
+        NODE_VERSION: ${NODE_VERSION:-20}
     container_name: ${ENV}_${APP_NAME}_php
     restart: unless-stopped
     working_dir: /var/www

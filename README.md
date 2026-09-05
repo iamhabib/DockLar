@@ -127,8 +127,10 @@ All keys live in `docker/.env` (not the Laravel `.env`, though Laravel still nee
 | `ENABLE_MONGODB_EXTENSION` | `false` | Build-time PECL `mongodb` |
 | `ENABLE_MONGODB_EXTENSION_VERSION` | `1.20.0` | PECL version when Mongo is enabled |
 | `ENABLE_SQLITE_EXTENSION` | `false` | Build-time `pdo_sqlite` + `sqlite3` |
+| `NPM` | `false` | Build-time Node.js + npm in the PHP image (for Vite / React / Vue) |
+| `NODE_VERSION` | `20` | Node.js **major** version when `NPM=true` (e.g. `18`, `20`, `22`). Uses NodeSource `setup_${NODE_VERSION}.x` |
 
-Changing PHP version or extension flags requires Compose Up (image rebuild). Changing ini / upload / queue values applies on container recreate.
+Changing PHP version, extension flags, `NPM`, or `NODE_VERSION` requires Compose Up (image rebuild). Changing ini / upload / queue values applies on container recreate.
 
 ## How the stack works
 
@@ -136,10 +138,38 @@ Changing PHP version or extension flags requires Compose Up (image rebuild). Cha
 
 - Base: official `php:${PHP_VERSION}-fpm`.
 - Always installed: `pdo_mysql`, `mbstring`, `exif`, `pcntl`, `bcmath`, `gd`, `zip`, `intl`, `calendar`, `redis`, Composer.
-- Optional: MongoDB and SQLite via build args from `.env`.
+- Optional: MongoDB, SQLite, and Node.js/npm via build args from `.env`.
 - `php/entrypoint.sh` substitutes `.env` values into `local.ini`, then:
   - `php-fpm` → stay root (workers are `appuser` via `www-custom.conf`)
   - queue/cron → `gosu appuser` so artisan is not root
+
+### Node.js / npm (`NPM=true`)
+
+When `NPM=true`, the PHP image installs **Node.js** (NodeSource) and **npm**. Use this for Laravel Vite, React, Vue, or any frontend build inside the container.
+
+```env
+NPM=true
+NODE_VERSION=20
+```
+
+`NODE_VERSION` is the Node **major** only (`18`, `20`, `22`, …). Default is `20` (current LTS-friendly for Vite). Change it and Compose Up to rebuild.
+
+Then Compose Up (rebuilds the image). From the host menu use **Goto Bash**, or:
+
+```bash
+docker exec -it ${ENV}_${APP_NAME}_php bash
+```
+
+Preferred (files owned by uid 1000, same as PHP-FPM workers):
+
+```bash
+su - appuser
+cd /var/www
+npm install
+npm run build
+```
+
+`node` and `npm` are on the system PATH for both root and `appuser`. Job/cron containers share the same image, so they get Node too when `NPM=true` (harmless if unused). Set `NPM=false` and rebuild if you no longer need Node (smaller image).
 
 ### Container Nginx
 
@@ -178,8 +208,9 @@ Turning a flag from `true` to `false` and running Compose Up/Down removes the ex
 - Compose Down is safe for data: it does not `docker compose down --volumes` or `--rmi`.
 - Image prune is host-wide unused images only; it does not prune volumes.
 - Keep host Laravel `storage/` and `bootstrap/cache` owned by uid `1000` (same as `appuser`).
-- Rebuild (`--no-cache`) on every Compose Up so PHP/extension changes are not served from a stale layer.
+- Rebuild (`--no-cache`) on every Compose Up so PHP/extension/`NPM`/`NODE_VERSION` changes are not served from a stale layer.
 - Do not recreate the host Nginx server block after Certbot unless you confirm overwrite and re-issue SSL.
+- For frontend builds with `NPM=true`, run `npm install` / `npm run build` as `appuser` so `node_modules` and build output are not root-owned on the bind mount.
 
 ## Troubleshooting
 
@@ -209,6 +240,10 @@ Set `ENABLE_JOB=true`, quote `QUEUE_OPTIONS`, then Compose Up. Confirm with Dock
 **Upload fails with 413**
 
 Raise `PHP_UPLOAD_MAX_FILESIZE` and `PHP_POST_MAX_SIZE` together (post should be ≥ upload), then recreate containers so both PHP and Nginx pick up the size.
+
+**`npm: command not found`**
+
+Set `NPM=true` (and optionally `NODE_VERSION=20`) in `docker/.env`, then Compose Up so the image rebuilds with Node. Confirm with `node -v` and `npm -v` inside Goto Bash.
 
 **Nginx test on the host**
 
