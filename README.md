@@ -24,7 +24,7 @@ Nginx container  (alpine, localhost-only publish)
 
 - PHP-FPM, queue, and cron share one image: `${COMPOSE_PROJECT_NAME}-php:latest`.
 - PHP-FPM master runs as root; pool workers run as `appuser` (uid `1000`).
-- Queue and cron drop to `appuser` so files in `storage/` stay writable by PHP-FPM.
+- Queue, cron, and **Goto Bash** run as `appuser` so files in `storage/` stay writable by PHP-FPM.
 - The Nginx container publishes `127.0.0.1:CONTAINER_PORT` only — not on the public interface. Traffic must go through host Nginx (or SSH tunnel).
 - Host scripts use the login user. If the current session is not in the `docker` group yet, they call `sudo docker` (passwordless on typical EC2 `ubuntu`). Do not use `newgrp` (it can hang the installer).
 
@@ -71,7 +71,7 @@ After Docker install, log out and back in once if you want `docker` without sudo
 | Docker Compose Rebuild (no-cache) | Full `--no-cache` rebuild + recreate (use after PHP version / extension / `NPM` / `NODE_VERSION` changes) |
 | Docker Compose Down | Stop this project's containers only. Does **not** delete images or volumes |
 | Docker PS | `docker ps` |
-| Goto Bash | Shell as `appuser` (uid `1000`) in `${ENV}_${APP_NAME}_php` — same user as PHP-FPM workers |
+| Goto Bash | Interactive shell as `appuser` in `${ENV}_${APP_NAME}_php` (artisan, composer, npm). For root: `docker exec -u 0 -it … bash` |
 | Delete All Unused Docker Images | `docker image prune -a -f` (images only, not volumes) |
 | Set Swap Memory | Create `/swapfile` (`1G`, `512M`, …). `M` and `G` sizes are calculated correctly |
 | Create NGINX Server Block | Install host Nginx if needed, write reverse proxy from `bash/reverse_proxy.conf`. Asks before overwriting an existing file (protects Certbot SSL) |
@@ -226,7 +226,7 @@ Turning a flag from `true` to `false` and running Compose Up/Down removes the ex
 - Entrypoint fixes `storage/` and `bootstrap/cache` ownership to uid `1000` when the top-level dir is not already owned by `appuser`. You can still fix manually on the host if needed.
 - Use **Docker Compose Up** for routine restarts (cached builds). Use **Rebuild (no-cache)** when PHP/extensions/`NPM`/`NODE_VERSION` change.
 - Do not recreate the host Nginx server block after Certbot unless you confirm overwrite and re-issue SSL.
-- For frontend builds with `NPM=true`, run `npm install` / `npm run build` as `appuser` so `node_modules` and build output are not root-owned on the bind mount.
+- **Goto Bash** is `appuser` — use it for `npm install` / `npm run build` / artisan so bind-mounted files are not root-owned. Root inside the container is rarely needed (`docker exec -u 0 …`).
 - Containers have `mem_limit` and rotated logs to reduce OOM / disk-fill risk.
 
 ## Troubleshooting
