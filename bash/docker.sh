@@ -1,79 +1,122 @@
 #!/bin/bash
 
-function install_docker_and_compose() {
-    set -e  # Exit on any error
-    set -x  # Enable debug mode
+# Run docker as the login user. If this session is not yet in the docker
+# group, fall back to sudo docker (passwordless on typical EC2 ubuntu).
+function run_docker() {
+    if docker info >/dev/null 2>&1; then
+        docker "$@"
+    else
+        sudo docker "$@"
+    fi
+}
 
-    # Update package list
+function run_compose() {
+    if docker info >/dev/null 2>&1; then
+        if docker compose version >/dev/null 2>&1; then
+            docker compose "$@"
+            return
+        fi
+        if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose "$@"
+            return
+        fi
+    fi
+
+    if sudo docker info >/dev/null 2>&1; then
+        if sudo docker compose version >/dev/null 2>&1; then
+            sudo docker compose "$@"
+            return
+        fi
+        if command -v docker-compose >/dev/null 2>&1; then
+            sudo docker-compose "$@"
+            return
+        fi
+    fi
+
+    display "error" "Docker Compose is not installed or Docker is not running"
+    return 1
+}
+
+function compose_files() {
+    echo -n "-f docker-compose.yml"
+    if [ "${ENABLE_CRON}" = "true" ]; then
+        echo -n " -f docker-compose.cron.yml"
+    fi
+    if [ "${ENABLE_JOB}" = "true" ]; then
+        echo -n " -f docker-compose.job.yml"
+    fi
+}
+
+function install_docker_and_compose() {
+    local target_user
+    target_user="$(get_login_user)"
+
     if ! sudo apt update; then
         display "error" "Failed to update package list"
-        exit 1
+        return 1
     fi
 
-    # Install Docker
-    if ! sudo apt install -y docker.io docker-compose -y; then
+    if ! sudo apt install -y docker.io docker-compose; then
         display "error" "Failed to install Docker"
-        exit 1
+        return 1
     fi
 
-    # Start and enable Docker service
-    sudo systemctl enable docker & sudo systemctl start docker
-
-    # Add the current user to the docker group
-    if ! sudo usermod -aG docker ubuntu; then
-        display "error" "Failed to add user to Docker group"
-        exit 1
+    if ! sudo systemctl enable docker; then
+        display "error" "Failed to enable Docker service"
+        return 1
     fi
 
-    newgrp docker;
+    if ! sudo systemctl start docker; then
+        display "error" "Failed to start Docker service"
+        return 1
+    fi
 
-    # Test Docker installation
-    if ! docker --version; then
+    if ! sudo usermod -aG docker "$target_user"; then
+        display "error" "Failed to add user ${target_user} to Docker group"
+        return 1
+    fi
+
+    if ! sudo docker --version; then
         display "error" "Docker installation failed"
-        exit 1
+        return 1
     fi
-
-    set +x  # Disable debug mode
 
     display "success" "Docker Installation Done"
+    display "info" "User '${target_user}' was added to the docker group. This session still uses sudo docker until you log out and back in. After re-login, docker runs as ${target_user} without sudo."
 }
 
 function docker_compose_up() {
-    # Check if the port is already in use
     if (echo >/dev/tcp/localhost/${CONTAINER_PORT}) >/dev/null 2>&1; then
         echo "❌ Port ${CONTAINER_PORT} is already in use. Please choose a different port or stop the service using this port."
         exit 1
     else
         echo "✅ Port ${CONTAINER_PORT} is available."
     fi
-    
-    # Build and start the containers
-    local compose_file="-f docker-compose.yml"
-    if [ "${ENABLE_CRON}" = "true" ]; then
-        compose_file="${compose_file} -f docker-compose.cron.yml"
-    fi
-    if [ "${ENABLE_JOB}" = "true" ]; then
-        compose_file="${compose_file} -f docker-compose.job.yml"
-    fi
 
-    display "info" "Executing: docker-compose ${compose_file} up"
+    local files
+    files="$(compose_files)"
 
-    docker-compose ${compose_file} build --no-cache
-    docker-compose ${compose_file} up -d
+    display "info" "Executing: docker compose ${files} up"
+
+    # shellcheck disable=SC2086
+    run_compose ${files} build --no-cache
+    # shellcheck disable=SC2086
+    run_compose ${files} up -d --remove-orphans
 }
 
 function docker_compose_down() {
+    local files
+    files="$(compose_files)"
 
-    # Stop all containers
-    local compose_file="-f docker-compose.yml"
-    if [ "${ENABLE_CRON}" = "true" ]; then
-        compose_file="${compose_file} -f docker-compose.cron.yml"
-    fi
-    if [ "${ENABLE_JOB}" = "true" ]; then
-        compose_file="${compose_file} -f docker-compose.job.yml"
-    fi
+    display "info" "Executing: docker compose ${files} down"
 
-    display "info" "Executing: docker-compose ${compose_file} down"
+    # Stop this project's containers. Do not delete images or volumes
+    # (unsafe on production). --remove-orphans cleans cron/job if flags were turned off.
+    # shellcheck disable=SC2086
+    run_compose ${files} down --remove-orphans
+}
 
-    docker-compose ${compose_file} down --rmi all --volumes
+function prune_unused_docker_images() {
+    run_docker image prune -a -f
+    display "success" "Unused Docker images were deleted"
 }

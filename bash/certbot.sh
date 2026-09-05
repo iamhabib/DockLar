@@ -1,17 +1,9 @@
 #!/bin/bash
 
-# Source nginx configuration and utilities
-source ./bash/nginx.sh
-source ./bash/utility.sh  # Add this to access display function and env variables
-
-# Ensure nginx is installed before proceeding
-install_nginx_if_not_installed
-
 function install_certbot() {
-    if ! command -v certbot &> /dev/null; then  # Better command existence check
+    if ! command -v certbot &> /dev/null; then
         display "info" "Certbot is not installed. Installing..."
 
-        # Error handling for each step
         if ! (sudo snap install core && sudo snap refresh core); then
             display "error" "Failed to install/refresh snap core"
             return 1
@@ -22,7 +14,7 @@ function install_certbot() {
             return 1
         fi
 
-        if ! sudo ln -sf /snap/bin/certbot /usr/bin/certbot; then  # Use -sf to force symlink
+        if ! sudo ln -sf /snap/bin/certbot /usr/bin/certbot; then
             display "error" "Failed to create certbot symlink"
             return 1
         fi
@@ -34,19 +26,30 @@ function install_certbot() {
 }
 
 function install_ssl_certificate() {
-    # Ensure HOST_URL is set
-    if [ -z "${HOST_URL}" ]; then
-        display "error" "HOST_URL is not set in environment"
+    if [ -z "${HOST_URL}" ] || [ -z "${HOST_PORT}" ] || [ -z "${CONTAINER_PORT}" ]; then
+        display "error" "HOST_URL, HOST_PORT, and CONTAINER_PORT must be set in .env"
         return 1
     fi
 
-    # Install certbot if not present
+    if ! install_nginx_if_not_installed; then
+        display "error" "Failed to install Nginx"
+        return 1
+    fi
+
+    local nginx_file_name="${HOST_URL}_${HOST_PORT}_${CONTAINER_PORT}.conf"
+    local available_path="/etc/nginx/sites-available/${nginx_file_name}"
+    local enabled_path="/etc/nginx/sites-enabled/${nginx_file_name}"
+
+    if [ ! -f "${available_path}" ] && [ ! -L "${enabled_path}" ]; then
+        display "error" "Nginx server block for ${HOST_URL} not found. Create it first (option: Create NGINX Server Block)."
+        return 1
+    fi
+
     if ! install_certbot; then
         display "error" "Failed to install certbot"
         return 1
     fi
 
-    # Attempt to install SSL certificate
     if ! sudo certbot --nginx -d "${HOST_URL}"; then
         display "error" "Failed to install SSL certificate for ${HOST_URL}"
         return 1

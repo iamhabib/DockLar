@@ -1,19 +1,13 @@
 
 services:
   cron:
-    build:
-      context: ./
-      dockerfile: ./Dockerfile
-      args:
-        PHP_VERSION: ${PHP_VERSION:-8.3}
-        ENABLE_MONGODB_EXTENSION: ${ENABLE_MONGODB_EXTENSION:-false}
-        ENABLE_MONGODB_EXTENSION_VERSION: ${ENABLE_MONGODB_EXTENSION_VERSION:-1.20.0}
+    image: ${COMPOSE_PROJECT_NAME}-php:latest
     container_name: ${ENV}_${APP_NAME}_cron
     restart: unless-stopped
     working_dir: /var/www
     volumes:
       - ../:/var/www:delegated
-      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini:ro
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini.template:ro
       - ./php/www-custom.conf:/usr/local/etc/php-fpm.d/www-custom.conf:ro
     environment:
       PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
@@ -22,7 +16,7 @@ services:
       PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-60}
     networks:
       mynet: {}
-    command: sh -c "while :; do php /var/www/artisan schedule:run >> /dev/null 2>&1; sleep 60; done"
+    command: ["sh", "-c", "while :; do php /var/www/artisan schedule:run; sleep 60; done"]
 
 networks:
   mynet:
