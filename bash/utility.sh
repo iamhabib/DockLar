@@ -12,8 +12,13 @@ function get_login_user() {
 
 function get_selection() {
     local options=("$@")
-    local selected_value=0
-    PS3='Enter your choice: '
+    local selected_value=""
+    local opt
+
+    # One option per line — default select is multi-column and hard to scan
+    local old_columns="${COLUMNS:-}"
+    COLUMNS=1
+    PS3=$'\nEnter number: '
 
     select opt in "${options[@]}"
     do
@@ -21,7 +26,15 @@ function get_selection() {
             selected_value=$opt
             break
         fi
+        display "warning" "Invalid choice. Enter a number from the list."
     done
+
+    if [ -n "$old_columns" ]; then
+        COLUMNS="$old_columns"
+    else
+        unset COLUMNS
+    fi
+
     printf '%s\n' "$selected_value"
 }
 
@@ -45,10 +58,28 @@ function show_heading() {
     local spaces
     spaces="$(printf '%*s' "$pad" '')"
 
+    echo ""
     echo -e "\033[0;36m╔═══════════════════════════════════════════════════════════════════╗\033[0m"
     echo -e "\033[0;36m║ \033[0;32m${title}\033[0;36m${spaces}║\033[0m"
     echo -e "\033[0;36m╚═══════════════════════════════════════════════════════════════════╝\033[0m"
 }
+
+# Compact summary so operators see which project they are acting on
+function show_project_context() {
+    local cron_flag="${ENABLE_CRON:-false}"
+    local job_flag="${ENABLE_JOB:-false}"
+    local extras=""
+
+    if [ "$cron_flag" = "true" ] || [ "$job_flag" = "true" ]; then
+        extras="  cron=${cron_flag}  job=${job_flag}"
+    fi
+
+    echo ""
+    display "info" "Project : ${ENV:-?} / ${APP_NAME:-?}"
+    display "info" "Host    : ${HOST_URL:-?}  (host :${HOST_PORT:-?} → 127.0.0.1:${CONTAINER_PORT:-?})"
+    display "info" "PHP     : ${PHP_VERSION:-?}${extras}"
+}
+
 
 function display() {
     local type=$1

@@ -51,8 +51,6 @@ Nginx container  (alpine, localhost-only publish)
    ./magic.sh
    ```
 
-   Or use Make: `make up` / `make down` / `make rebuild` / `make ps`.
-
 Typical first-host order:
 
 1. Install Docker & Docker Compose  
@@ -86,7 +84,6 @@ Compose v2 (`docker compose`) is used when available; otherwise `docker-compose`
 ```
 docker/
 ├── magic.sh                   Menu entrypoint
-├── Makefile                   up / down / rebuild / ps wrappers
 ├── Dockerfile                 PHP-FPM image (also used by job/cron)
 ├── docker-compose.yml         php + nginx
 ├── docker-compose.job.yml     queue worker (ENABLE_JOB=true)
@@ -139,7 +136,7 @@ All keys live in `docker/.env` (not the Laravel `.env`, though Laravel still nee
 | `NPM` | `false` | Build-time Node.js + npm in the PHP image (for Vite / React / Vue) |
 | `NODE_VERSION` | `20` | Node.js **major** version when `NPM=true` (e.g. `18`, `20`, `22`). Uses NodeSource `setup_${NODE_VERSION}.x` |
 
-Changing PHP version, extension flags, `NPM`, or `NODE_VERSION` requires **Docker Compose Rebuild (no-cache)** (or `make rebuild`). Changing ini / upload / queue / memory values applies on container recreate (`Docker Compose Up` / `make up`).
+Changing PHP version, extension flags, `NPM`, or `NODE_VERSION` requires **Docker Compose Rebuild (no-cache)**. Changing ini / upload / queue / memory values applies on container recreate (`Docker Compose Up`).
 
 ## How the stack works
 
