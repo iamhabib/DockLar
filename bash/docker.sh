@@ -39,10 +39,10 @@ function run_compose() {
 
 function compose_files() {
     echo -n "-f docker-compose.yml"
-    if [ "${ENABLE_CRON}" = "true" ]; then
+    if [ "${ENABLE_CRON:-false}" = "true" ]; then
         echo -n " -f docker-compose.cron.yml"
     fi
-    if [ "${ENABLE_JOB}" = "true" ]; then
+    if [ "${ENABLE_JOB:-false}" = "true" ]; then
         echo -n " -f docker-compose.job.yml"
     fi
 }
@@ -85,23 +85,63 @@ function install_docker_and_compose() {
     display "info" "User '${target_user}' was added to the docker group. This session still uses sudo docker until you log out and back in. After re-login, docker runs as ${target_user} without sudo."
 }
 
-function docker_compose_up() {
-    if (echo >/dev/tcp/localhost/${CONTAINER_PORT}) >/dev/null 2>&1; then
-        echo "❌ Port ${CONTAINER_PORT} is already in use. Please choose a different port or stop the service using this port."
-        exit 1
-    else
-        echo "✅ Port ${CONTAINER_PORT} is available."
+# True when this project's Nginx container is already bound to CONTAINER_PORT.
+function container_owns_port() {
+    local container_name="${ENV}_${APP_NAME}_nginx"
+    local port_map
+
+    if [ "$(run_docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null || echo false)" != "true" ]; then
+        return 1
     fi
+
+    port_map="$(run_docker port "$container_name" 80 2>/dev/null || true)"
+    if [ -z "$port_map" ]; then
+        return 1
+    fi
+
+    # Matches "0.0.0.0:8000" or "127.0.0.1:8000"
+    echo "$port_map" | grep -qE ":${CONTAINER_PORT}$"
+}
+
+function ensure_container_port_available() {
+    if (echo >/dev/tcp/localhost/"${CONTAINER_PORT}") >/dev/null 2>&1; then
+        if container_owns_port; then
+            display "info" "Port ${CONTAINER_PORT} is in use by this project's Nginx container; Compose will recreate as needed."
+            return 0
+        fi
+        display "error" "Port ${CONTAINER_PORT} is already in use. Please choose a different port or stop the service using this port."
+        exit 1
+    fi
+    display "success" "Port ${CONTAINER_PORT} is available."
+}
+
+function docker_compose_up() {
+    ensure_container_port_available
 
     local files
     files="$(compose_files)"
 
-    display "info" "Executing: docker compose ${files} up"
+    display "info" "Executing: docker compose ${files} up (cached build)"
+
+    # shellcheck disable=SC2086
+    run_compose ${files} build
+    # shellcheck disable=SC2086
+    run_compose ${files} up -d --remove-orphans
+}
+
+# Force a clean image rebuild (PHP version / extensions / NPM changes).
+function docker_compose_rebuild() {
+    ensure_container_port_available
+
+    local files
+    files="$(compose_files)"
+
+    display "info" "Executing: docker compose ${files} rebuild (--no-cache)"
 
     # shellcheck disable=SC2086
     run_compose ${files} build --no-cache
     # shellcheck disable=SC2086
-    run_compose ${files} up -d --remove-orphans
+    run_compose ${files} up -d --remove-orphans --force-recreate
 }
 
 function docker_compose_down() {

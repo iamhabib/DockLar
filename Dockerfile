@@ -8,19 +8,13 @@ ARG NODE_VERSION=20
 
 FROM php:${PHP_VERSION}-fpm
 
-# Redeclare ARGs and export as ENV for access in RUN blocks
+# Redeclare ARGs for use in RUN blocks (not exported as runtime ENV)
 ARG user
 ARG ENABLE_MONGODB_EXTENSION
 ARG ENABLE_MONGODB_EXTENSION_VERSION
 ARG ENABLE_SQLITE_EXTENSION
 ARG NPM
 ARG NODE_VERSION
-
-ENV ENABLE_MONGODB_EXTENSION=${ENABLE_MONGODB_EXTENSION}
-ENV ENABLE_MONGODB_EXTENSION_VERSION=${ENABLE_MONGODB_EXTENSION_VERSION}
-ENV ENABLE_SQLITE_EXTENSION=${ENABLE_SQLITE_EXTENSION}
-ENV NPM=${NPM}
-ENV NODE_VERSION=${NODE_VERSION}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -34,7 +28,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     pkg-config \
     libicu-dev \
-    libsqlite3-dev \
     gosu \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -47,7 +40,9 @@ RUN if [ "$ENABLE_MONGODB_EXTENSION" = "true" ] && [ -n "$ENABLE_MONGODB_EXTENSI
 fi
 
 RUN if [ "$ENABLE_SQLITE_EXTENSION" = "true" ]; then \
-    docker-php-ext-install pdo_sqlite sqlite3; \
+    apt-get update && apt-get install -y --no-install-recommends libsqlite3-dev \
+    && docker-php-ext-install pdo_sqlite sqlite3 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*; \
 fi
 
 # Optional Node.js + npm (Vite / React / Vue frontend builds)
@@ -66,9 +61,12 @@ fi
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-RUN useradd -ms /bin/bash -g www-data -u 1000 $user
+RUN useradd -ms /bin/bash -g www-data -u 1000 $user \
+    && mkdir -p /var/www \
+    && chown $user:www-data /var/www
 
-COPY --chown=$user:www-data . /var/www
+# Replace default pool so only one [www] definition exists
+COPY php/www-custom.conf /usr/local/etc/php-fpm.d/www.conf
 
 COPY php/entrypoint.sh /usr/local/bin/php-entrypoint.sh
 RUN chmod +x /usr/local/bin/php-entrypoint.sh

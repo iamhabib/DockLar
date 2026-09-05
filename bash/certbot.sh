@@ -31,6 +31,11 @@ function install_ssl_certificate() {
         return 1
     fi
 
+    if [ "${HOST_PORT}" != "80" ]; then
+        display "error" "Let's Encrypt HTTP-01 requires HOST_PORT=80 (currently HOST_PORT=${HOST_PORT}). Set HOST_PORT=80, recreate the Nginx server block, then retry."
+        return 1
+    fi
+
     if ! install_nginx_if_not_installed; then
         display "error" "Failed to install Nginx"
         return 1

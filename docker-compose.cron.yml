@@ -1,14 +1,13 @@
-
 services:
   cron:
     image: ${COMPOSE_PROJECT_NAME}-php:latest
     container_name: ${ENV}_${APP_NAME}_cron
     restart: unless-stopped
     working_dir: /var/www
+    mem_limit: ${CRON_CONTAINER_MEMORY:-256m}
     volumes:
       - ../:/var/www:delegated
       - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini.template:ro
-      - ./php/www-custom.conf:/usr/local/etc/php-fpm.d/www-custom.conf:ro
     environment:
       PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
       PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-30M}
@@ -16,7 +15,13 @@ services:
       PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-60}
     networks:
       mynet: {}
-    command: ["sh", "-c", "while :; do php /var/www/artisan schedule:run; sleep 60; done"]
+    # flock -n skips a tick if the previous schedule:run is still running
+    command: ["sh", "-c", "while :; do flock -n /tmp/laravel-scheduler.lock php /var/www/artisan schedule:run; sleep 60; done"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   mynet:

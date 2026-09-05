@@ -13,6 +13,19 @@ if [ -f "$ini_template" ] && [ "$(id -u)" = "0" ]; then
         "$ini_template" > "$ini_target"
 fi
 
+# Align storage / cache ownership with PHP-FPM workers (uid 1000) when needed.
+# Recursive chown only runs if the top-level dir is not already owned by appuser.
+if [ "$(id -u)" = "0" ]; then
+    for dir in /var/www/storage /var/www/bootstrap/cache; do
+        if [ -d "$dir" ]; then
+            owner_uid="$(stat -c '%u' "$dir" 2>/dev/null || true)"
+            if [ -n "$owner_uid" ] && [ "$owner_uid" != "1000" ]; then
+                chown -R appuser:www-data "$dir" || true
+            fi
+        fi
+    done
+fi
+
 # php-fpm master must stay root so pool workers can run as appuser.
 # Queue and cron must not run as root (storage files would be unwritable by PHP-FPM).
 if [ "$(id -u)" = "0" ] && [ "$1" != "php-fpm" ]; then

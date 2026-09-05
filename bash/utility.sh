@@ -28,19 +28,29 @@ function get_selection() {
 function handle_error() {
     local exit_code=$1
     local error_message=$2
-    if [ $exit_code -ne 0 ]; then
+    if [ "$exit_code" -ne 0 ]; then
         display "error" "Error: $error_message (Exit code: $exit_code)"
-        exit $exit_code
+        exit "$exit_code"
     fi
 }
 
-function show_heading(){
+function show_heading() {
+    local title="=> $1"
+    local width=67
+    local pad
+    pad=$((width - ${#title} - 1))
+    if [ "$pad" -lt 1 ]; then
+        pad=1
+    fi
+    local spaces
+    spaces="$(printf '%*s' "$pad" '')"
+
     echo -e "\033[0;36m╔═══════════════════════════════════════════════════════════════════╗\033[0m"
-    echo -e "\033[0;36m║ \033[0;32m=> $1\033[0;36m                                                       ║\033[0m"
+    echo -e "\033[0;36m║ \033[0;32m${title}\033[0;36m${spaces}║\033[0m"
     echo -e "\033[0;36m╚═══════════════════════════════════════════════════════════════════╝\033[0m"
 }
 
-function display(){
+function display() {
     local type=$1
     local message=$2
 
@@ -66,13 +76,13 @@ function display(){
 function get_user_choice() {
     local choice
     while true; do
-        read -p "Please enter yes or no: " choice
+        read -r -p "Please enter yes or no: " choice
         case "$choice" in
             [Yy][Ee][Ss]|[Yy])
-                return 0  # true
+                return 0
                 ;;
             [Nn][Oo]|[Nn])
-                return 1  # false
+                return 1
                 ;;
             *)
                 echo "Invalid input. Please enter yes or no."
@@ -81,19 +91,37 @@ function get_user_choice() {
     done
 }
 
+# Load KEY=VALUE pairs without shell-sourcing (.env is not executed).
 function read_env_file() {
     if [ ! -f .env ]; then
         display "danger" ".env file not found!"
         exit 1
     fi
 
-    set -a
-    # shellcheck disable=SC1091
-    source .env
-    set +a
+    local line key value
+    while IFS= read -r line || [ -n "$line" ]; do
+        line="${line%$'\r'}"
+
+        case "$line" in
+            ''|\#*) continue ;;
+        esac
+
+        if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            value="${BASH_REMATCH[2]}"
+
+            if [[ "$value" =~ ^\"(.*)\"$ ]]; then
+                value="${BASH_REMATCH[1]}"
+            elif [[ "$value" =~ ^\'(.*)\'$ ]]; then
+                value="${BASH_REMATCH[1]}"
+            fi
+
+            printf -v "$key" '%s' "$value"
+            export "$key"
+        fi
+    done < .env
 }
 
-# Function to set up swap memory
 function setup_swap_memory() {
     local SWAP_SIZE
     local SWAP_FILE="/swapfile"
@@ -105,7 +133,7 @@ function setup_swap_memory() {
     fi
 
     while true; do
-        read -p "Enter the swap size (e.g., 1G, 2G, 512M): " SWAP_SIZE
+        read -r -p "Enter the swap size (e.g., 1G, 2G, 512M): " SWAP_SIZE
         if [[ $SWAP_SIZE =~ ^[0-9]+[MG]$ ]]; then
             break
         else
@@ -164,8 +192,7 @@ function setup_swap_memory() {
     fi
 
     if ! grep -q "$SWAP_FILE" /etc/fstab; then
-        echo "$SWAP_FILE none swap sw 0 0" | sudo tee -a /etc/fstab >/dev/null
-        if [ $? -ne 0 ]; then
+        if ! echo "$SWAP_FILE none swap sw 0 0" | sudo tee -a /etc/fstab >/dev/null; then
             display "error" "Failed to update /etc/fstab"
             return 1
         fi
@@ -176,8 +203,7 @@ function setup_swap_memory() {
     fi
 
     if ! grep -q "vm.swappiness" /etc/sysctl.conf; then
-        echo "vm.swappiness=$SWAPPINESS" | sudo tee -a /etc/sysctl.conf >/dev/null
-        if [ $? -ne 0 ]; then
+        if ! echo "vm.swappiness=$SWAPPINESS" | sudo tee -a /etc/sysctl.conf >/dev/null; then
             display "warning" "Failed to set permanent swappiness"
         fi
     fi

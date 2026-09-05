@@ -1,14 +1,13 @@
-
 services:
   job:
     image: ${COMPOSE_PROJECT_NAME}-php:latest
     container_name: ${ENV}_${APP_NAME}_job
     restart: unless-stopped
     working_dir: /var/www
+    mem_limit: ${JOB_CONTAINER_MEMORY:-512m}
     volumes:
       - ../:/var/www:delegated
       - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini.template:ro
-      - ./php/www-custom.conf:/usr/local/etc/php-fpm.d/www-custom.conf:ro
     environment:
       PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
       PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-30M}
@@ -19,6 +18,11 @@ services:
     networks:
       mynet: {}
     command: ["sh", "-c", "php /var/www/artisan $$QUEUE_COMMAND $$QUEUE_OPTIONS"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   mynet:
