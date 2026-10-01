@@ -14,7 +14,7 @@ Internet
 Host Nginx  (HOST_URL:HOST_PORT)     optional SSL via Certbot
    │  reverse proxy → 127.0.0.1:CONTAINER_PORT
    ▼
-Nginx container  (alpine, localhost-only publish)
+Nginx container  (alpine, published on CONTAINER_BIND_ADDRESS)
    │  FastCGI :9000
    └──────────────► PHP-FPM container
                     │
@@ -25,7 +25,7 @@ Nginx container  (alpine, localhost-only publish)
 - PHP-FPM, queue, and cron share one image: `${COMPOSE_PROJECT_NAME}-php:latest`.
 - PHP-FPM master runs as root; pool workers run as `appuser` (uid `1000`).
 - Queue, cron, and **Goto Bash** run as `appuser` so files in `storage/` stay writable by PHP-FPM.
-- The Nginx container publishes `127.0.0.1:CONTAINER_PORT` only — not on the public interface. Traffic must go through host Nginx (or SSH tunnel).
+- The Nginx container publishes `CONTAINER_BIND_ADDRESS:CONTAINER_PORT`. Default `0.0.0.0` exposes it on all interfaces; set `127.0.0.1` to keep it localhost-only so traffic must go through host Nginx (or SSH tunnel).
 - Host scripts use the login user. If the current session is not in the `docker` group yet, they call `sudo docker` (passwordless on typical EC2 `ubuntu`). Do not use `newgrp` (it can hang the installer).
 
 ## Quick start
@@ -114,7 +114,8 @@ All keys live in `docker/.env` (not the Laravel `.env`, though Laravel still nee
 | `COMPOSE_PROJECT_NAME` | `prod_abc` | Compose project / PHP image name `${COMPOSE_PROJECT_NAME}-php:latest` |
 | `APP_NAME` | `abc` | Container names: `${ENV}_${APP_NAME}_php` / `_nginx` / `_job` / `_cron` |
 | `ENV` | `prod` | Same naming + Docker network `${ENV}_${APP_NAME}_network` |
-| `CONTAINER_PORT` | `8000` | Host loopback port published by the Nginx container (`127.0.0.1` only) |
+| `CONTAINER_BIND_ADDRESS` | `0.0.0.0` | Host interface the Nginx container port is published on (`0.0.0.0` = all, `127.0.0.1` = localhost only) |
+| `CONTAINER_PORT` | `8000` | Host port published by the Nginx container |
 | `HOST_URL` | `abc.com` | Host Nginx `server_name` and Certbot domain |
 | `HOST_PORT` | `80` | Host Nginx listen port (must be `80` for Certbot HTTP-01) |
 | `ENABLE_CRON` | `false` | `true` to run `docker-compose.cron.yml` |
@@ -181,7 +182,7 @@ docker exec -u 0 -it ${ENV}_${APP_NAME}_php bash
 ### Container Nginx
 
 - Image `nginx:alpine`.
-- Publishes **`127.0.0.1:CONTAINER_PORT:80`** only (not `0.0.0.0`).
+- Publishes **`${CONTAINER_BIND_ADDRESS}:CONTAINER_PORT:80`** (default `0.0.0.0`; use `127.0.0.1` for localhost-only).
 - `nginx/nginx.conf` is an official envsubst template; only `PHP_UPLOAD_MAX_FILESIZE` is substituted (`NGINX_ENVSUBST_FILTER`).
 - Serves `/var/www/public`, FastCGI to `php:9000`.
 - `/health` returns `200 ok` for healthchecks (no PHP).

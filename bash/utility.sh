@@ -76,7 +76,7 @@ function show_project_context() {
 
     echo ""
     display "info" "Project : ${ENV:-?} / ${APP_NAME:-?}"
-    display "info" "Host    : ${HOST_URL:-?}  (host :${HOST_PORT:-?} → 127.0.0.1:${CONTAINER_PORT:-?})"
+    display "info" "Host    : ${HOST_URL:-?}  (host :${HOST_PORT:-?} → ${CONTAINER_BIND_ADDRESS:-0.0.0.0}:${CONTAINER_PORT:-?})"
     display "info" "PHP     : ${PHP_VERSION:-?}${extras}"
 }
 
