@@ -12,9 +12,9 @@ services:
       PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
       PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-30M}
       PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-30M}
-      PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-60}
+      PHP_MAX_EXECUTION_TIME: 0
       QUEUE_COMMAND: ${QUEUE_COMMAND:-queue:work}
-      QUEUE_OPTIONS: ${QUEUE_OPTIONS:---sleep=5 --tries=2 --timeout=300}
+      QUEUE_OPTIONS: ${QUEUE_OPTIONS:-}
     networks:
       mynet: {}
     command: ["sh", "-c", "php /var/www/artisan $$QUEUE_COMMAND $$QUEUE_OPTIONS"]
