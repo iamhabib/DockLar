@@ -34,8 +34,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl calendar
 
 # Install PHP Redis extension from source (bypasses flaky PECL REST XML errors)
+ARG PHPREDIS_VERSION=6.3.0
 RUN mkdir -p /usr/src/php/ext/redis \
-    && curl -fsSL https://github.com/phpredis/phpredis/archive/refs/tags/6.1.0.tar.gz | tar xvz -C /usr/src/php/ext/redis --strip 1 \
+    && curl -fsSL https://github.com/phpredis/phpredis/archive/refs/tags/${PHPREDIS_VERSION}.tar.gz | tar xvz -C /usr/src/php/ext/redis --strip 1 \
     && docker-php-ext-install redis \
     && rm -rf /usr/src/php/ext/redis
 

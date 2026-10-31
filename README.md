@@ -123,6 +123,7 @@ All keys live in `docker/.env` (not the Laravel `.env`, though Laravel still nee
 | `QUEUE_COMMAND` | `queue:work` | Artisan command for the job container |
 | `QUEUE_OPTIONS` | `--sleep=5 --tries=2 --timeout=300` | Extra artisan flags; **must be quoted** in `.env` |
 | `PHP_VERSION` | `8.3` | `php:${PHP_VERSION}-fpm` |
+| `PHPREDIS_VERSION` | `6.3.0` | phpredis release tag built from source (use 6.3.0+ for PHP 8.5) |
 | `PHP_MEMORY_LIMIT` | `512M` | Written into container `php.ini` at start |
 | `PHP_UPLOAD_MAX_FILESIZE` | `30M` | PHP upload limit **and** Nginx `client_max_body_size` |
 | `PHP_POST_MAX_SIZE` | `30M` | PHP `post_max_size` |
